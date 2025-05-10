@@ -1,0 +1,199 @@
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <script src="wasm_exec.js"></script>
+  <script>
+    const go = new Go()
+    WebAssembly.instantiateStreaming(
+      fetch('main.wasm'),
+      go.importObject
+    ).then(result => {
+      go.run(result.instance)
+    })
+
+  </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      background-color: #f9f9f9;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 1000px;
+      margin: auto;
+      background-color: #fff;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #4CAF50;
+      color: white;
+      font-weight: bold;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+
+    caption {
+      font-size: 1.5em;
+      margin-bottom: 15px;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f9;
+      padding: 40px;
+      color: #333;
+    }
+
+    h2 {
+      color: #4CAF50;
+      margin-bottom: 20px;
+    }
+
+    input[type="file"] {
+      padding: 8px;
+      border: 2px dashed #4CAF50;
+      background-color: #fff;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background-color 0.3s ease;
+    }
+
+    input[type="file"]:hover {
+      background-color: #e8f5e9;
+    }
+
+    #preview {
+      margin-top: 20px;
+      max-width: 300px;
+      height: auto;
+      display: none;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    #message {
+      margin-top: 15px;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+
+    .valid {
+      color: #388e3c;
+    }
+
+    .invalid {
+      color: #d32f2f;
+    }
+  </style>
+</head>
+
+<body>
+  <center>
+    <h2>Select a RAW image:</h2>
+    <input type="file" onchange="validateRAW(event)">
+    <br><br>
+    <img id="preview" src="" style="max-width: 300px; display: none;">
+    <p id="message" style="color: black;"></p>
+    <table id="jsonTable">
+      <caption>EXIF Metadata</caption>
+      <thead>
+        <tr>
+          <th>Key</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </center>
+  <script>
+    function renderTable(jsonData) {
+      const tbody = document.querySelector("#jsonTable tbody");
+      tbody.innerHTML = ""
+
+      for (const [key, value] of Object.entries(jsonData)) {
+        const row = document.createElement("tr");
+        const keyCell = document.createElement("td");
+        const valueCell = document.createElement("td");
+
+        keyCell.textContent = key;
+
+        if (Array.isArray(value)) {
+          valueCell.textContent = value.join(", ");
+        } else if (typeof value === "string") {
+          const trimmed = value.trim();
+          valueCell.textContent = trimmed.length > 0 ? trimmed : "(empty)";
+        } else {
+          valueCell.textContent = String(value);
+        }
+
+        row.appendChild(keyCell);
+        row.appendChild(valueCell);
+        tbody.appendChild(row);
+      }
+    }
+
+    function validateRAW(event) {
+      const tbody = document.querySelector("#jsonTable tbody");
+      tbody.innerHTML = ""
+
+      const file = event.target.files[0];
+      // supported raw files
+      const validExtensions = ['.cr2', '.nef', '.arw', '.dng', '.rw2', '.raf'];
+
+      if (file) {
+        const fileName = file.name.toLowerCase();
+        const isRAW = validExtensions.some(ext => fileName.endsWith(ext));
+
+        const message = document.getElementById('message');
+        const img = document.getElementById('preview');
+
+        if (!isRAW) {
+          message.textContent = "Please select a supported RAW image file.\nSupported extentions: " + validExtensions.join(", ");
+          img.style.display = 'none';
+          img.src = '';
+          return;
+        }
+
+        message.textContent = "";
+
+        const reader = new FileReader()
+        reader.onload = function () {
+          const arrayBuffer = this.result,
+            array = new Uint8Array(arrayBuffer)
+          const j = process(
+            array,
+          )
+
+          if (!j) {
+            message.textContent = "something went wrong. please try again";
+            img.style.display = 'none';
+            img.src = '';
+            return;
+          }
+
+          const js = JSON.parse(j)
+          renderTable(js)
+        }
+        reader.readAsArrayBuffer(file)
+      }
+    }
+
+  </script>
+</body>
+
+</html>
