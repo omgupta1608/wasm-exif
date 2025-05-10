@@ -101,13 +101,20 @@
   </style>
 </head>
 
-<body>
+<body>  
   <center>
-    <h2>Select a RAW image:</h2>
+    <h2>Select a RAW image</h2>
     <input type="file" onchange="validateRAW(event)">
     <br><br>
     <img id="preview" src="" style="max-width: 300px; display: none;">
     <p id="message" style="color: black;"></p>
+    <a href="https://github.com/omgupta1608/wasm-exif" target="_blank" style="position: absolute; top: 10px; right: 10px;">
+      <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" 
+           alt="GitHub" 
+           width="32" 
+           height="32" 
+           style="border-radius: 50%; box-shadow: 0 0 5px rgba(0,0,0,0.2);">
+    </a>
     <table id="jsonTable">
       <caption>EXIF Metadata</caption>
       <thead>
