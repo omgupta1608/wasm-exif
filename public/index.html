@@ -2,7 +2,9 @@
 
 <head>
   <meta charset="utf-8" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <script src="wasm_exec.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script>
     const go = new Go()
     WebAssembly.instantiateStreaming(
@@ -11,195 +13,634 @@
     ).then(result => {
       go.run(result.instance)
     })
-
   </script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 30px;
-      background-color: #f9f9f9;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      max-width: 1000px;
-      margin: auto;
-      background-color: #fff;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-
-    th,
-    td {
-      text-align: left;
-      padding: 12px 16px;
-      border-bottom: 1px solid #ddd;
-    }
-
-    th {
-      background-color: #4CAF50;
-      color: white;
-      font-weight: bold;
-    }
-
-    tr:hover {
-      background-color: #f1f1f1;
-    }
-
-    caption {
-      font-size: 1.5em;
-      margin-bottom: 15px;
-    }
-
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background-color: #f4f4f9;
       padding: 40px;
       color: #333;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
     }
 
     h2 {
       color: #4CAF50;
       margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .upload-section {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
 
     input[type="file"] {
-      padding: 8px;
+      padding: 12px;
       border: 2px dashed #4CAF50;
       background-color: #fff;
       cursor: pointer;
       border-radius: 8px;
       transition: background-color 0.3s ease;
+      width: 300px;
     }
 
     input[type="file"]:hover {
       background-color: #e8f5e9;
     }
 
-    #preview {
-      margin-top: 20px;
-      max-width: 300px;
-      height: auto;
+    .search-section {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
       display: none;
+    }
+
+    .search-section.visible {
+      display: block;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
       border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      font-size: 16px;
+      transition: border-color 0.3s ease;
     }
 
-    #message {
-      margin-top: 15px;
+    .search-input:focus {
+      outline: none;
+      border-color: #4CAF50;
+    }
+
+    .search-results {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .files-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .file-card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .file-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+
+    .file-card.hidden {
+      display: none;
+    }
+
+    .file-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .file-name {
       font-weight: bold;
-      font-size: 1rem;
+      color: #333;
+      font-size: 16px;
+      word-break: break-word;
     }
 
-    .valid {
-      color: #388e3c;
+    .file-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
     }
 
-    .invalid {
-      color: #d32f2f;
+    .action-btn {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 10px;
+      margin-left: 8px;
+      margin-top: 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background-color 0.3s, transform 0.2s;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .action-btn:hover:not(:disabled) {
+      background: #45a049;
+      transform: translateY(-1px);
+    }
+
+    .action-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: 500;
+      font-size: 13px;
+      display: inline-block;
+    }
+
+    .status.processing {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .export-section {
+      text-align: center;
+      margin: 30px 0;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .export-btn {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      margin: 0 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+
+    .export-btn:hover {
+      background: #1976D2;
+    }
+
+    .export-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      background-color: white;
+      margin: 5% auto;
+      padding: 20px;
+      border-radius: 10px;
+      width: 80%;
+      max-width: 800px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+    }
+
+    .close {
+      color: #aaa;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .close:hover {
+      color: black;
+    }
+
+    .json-viewer {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 5px;
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .github-link {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+
+    .github-link img {
+      border-radius: 50%;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #4CAF50;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      .file-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+      }
+
+      .file-actions {
+        justify-content: center;
+      }
+
+      .action-btn {
+        flex: 1;
+        justify-content: center;
+      }
     }
   </style>
 </head>
 
-<body>  
-  <center>
-    <h2>Select a RAW image</h2>
-    <input type="file" onchange="validateRAW(event)">
-    <br><br>
-    <img id="preview" src="" style="max-width: 300px; display: none;">
-    <p id="message" style="color: black;"></p>
-    <a href="https://github.com/omgupta1608/wasm-exif" target="_blank" style="position: absolute; top: 10px; right: 10px;">
-      <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" 
-           alt="GitHub" 
-           width="32" 
-           height="32" 
-           style="border-radius: 50%; box-shadow: 0 0 5px rgba(0,0,0,0.2);">
+<body>
+  <div class="container">
+    <a href="https://github.com/omgupta1608/wasm-exif" target="_blank" class="github-link">
+      <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub" width="32"
+        height="32">
     </a>
-    <table id="jsonTable">
-      <caption>EXIF Metadata</caption>
-      <thead>
-        <tr>
-          <th>Key</th>
-          <th>Value</th>
-        </tr>
-      </thead>
-      <tbody>
-      </tbody>
-    </table>
-  </center>
+
+    <h2>RAW Image EXIF Extractor</h2>
+
+    <div class="upload-section">
+      <input type="file" id="fileInput" multiple accept=".cr2,.nef,.arw,.dng,.rw2,.raf.,.jpg,.jpeg"
+        onchange="handleFileSelection(event)">
+      <p>Select RAW image(s) (.cr2, .nef, .arw, .dng, .rw2, .raf, .jpg, .jpeg)</p>
+      <div class="progress-bar" id="progressBar" style="display: none;">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+
+    <div id="execution-time"></div>
+    <div class="export-section" id="exportSection" style="display: none;">
+      <h3>Bulk Export Options</h3>
+      <button class="export-btn" onclick="exportAsJSON()" id="jsonBtn">📄 Export as JSON</button>
+      <button class="export-btn" onclick="exportAsZip()" id="zipBtn">📦 Download All JSON Files (ZIP)</button>
+    </div>
+
+    <div class="search-section" id="searchSection">
+      <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search files by name..."
+        oninput="filterFiles()">
+      <div class="search-results" id="searchResults"></div>
+      <div class="files-list" id="filesList"></div>
+    </div>
+
+
+  </div>
+  <!-- Modal for JSON viewer -->
+  <div id="jsonModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">JSON Data</h3>
+        <span class="close" onclick="closeModal()">&times;</span>
+      </div>
+      <div class="json-viewer" id="jsonViewer"></div>
+    </div>
+  </div>
+
   <script>
-    function renderTable(jsonData) {
-      const tbody = document.querySelector("#jsonTable tbody");
-      tbody.innerHTML = ""
+    let processedFiles = new Map();
+    let allResults = [];
 
-      for (const [key, value] of Object.entries(jsonData)) {
-        const row = document.createElement("tr");
-        const keyCell = document.createElement("td");
-        const valueCell = document.createElement("td");
+    function handleFileSelection(event) {
+      const files = Array.from(event.target.files);
+      const validExtensions = ['.cr2', '.nef', '.arw', '.dng', '.rw2', '.raf', '.jpg', '.jpeg'];
 
-        keyCell.textContent = key;
-
-        if (Array.isArray(value)) {
-          valueCell.textContent = value.join(", ");
-        } else if (typeof value === "string") {
-          const trimmed = value.trim();
-          valueCell.textContent = trimmed.length > 0 ? trimmed : "(empty)";
-        } else {
-          valueCell.textContent = String(value);
-        }
-
-        row.appendChild(keyCell);
-        row.appendChild(valueCell);
-        tbody.appendChild(row);
-      }
-    }
-
-    function validateRAW(event) {
-      const tbody = document.querySelector("#jsonTable tbody");
-      tbody.innerHTML = ""
-
-      const file = event.target.files[0];
-      // supported raw files
-      const validExtensions = ['.cr2', '.nef', '.arw', '.dng', '.rw2', '.raf'];
-
-      if (file) {
+      const validFiles = files.filter(file => {
         const fileName = file.name.toLowerCase();
-        const isRAW = validExtensions.some(ext => fileName.endsWith(ext));
+        return validExtensions.some(ext => fileName.endsWith(ext));
+      });
 
-        const message = document.getElementById('message');
-        const img = document.getElementById('preview');
+      if (validFiles.length === 0) {
+        alert("Please select supported RAW image files.\nSupported extensions: " + validExtensions.join(", "));
+        return;
+      }
 
-        if (!isRAW) {
-          message.textContent = "Please select a supported RAW image file.\nSupported extentions: " + validExtensions.join(", ");
-          img.style.display = 'none';
-          img.src = '';
-          return;
+      if (validFiles.length !== files.length) {
+        alert(`${files.length - validFiles.length} files were skipped (unsupported format).`);
+      }
+
+
+      function formatDuration(ms) {
+        if (ms < 1000) {
+          return `${ms.toFixed(2)} ms`;
+        } else if (ms < 60 * 1000) {
+          return `${(ms / 1000).toFixed(2)} seconds`;
+        } else {
+          return `${(ms / (60 * 1000)).toFixed(2)} minutes`;
         }
+      }
+      const start = Date.now()
+      processFiles(validFiles).then(_ => {
+        const end = Date.now();
+        const elapsed = end - start;
 
-        message.textContent = "";
+        const time = document.getElementById('execution-time')
+        time.innerHTML = `
+<h3>Processed ${validFiles.length} file(s) in ${formatDuration(elapsed)} ⚡️ </h3>  
+`
+      });
 
-        const reader = new FileReader()
-        reader.onload = function () {
-          const arrayBuffer = this.result,
-            array = new Uint8Array(arrayBuffer)
-          const j = process(
-            array,
-          )
+    }
 
-          if (!j) {
-            message.textContent = "something went wrong. please try again";
-            img.style.display = 'none';
-            img.src = '';
-            return;
-          }
+    async function processFiles(files) {
+      const filesList = document.getElementById('filesList');
+      const progressBar = document.getElementById('progressBar');
+      const progressFill = document.getElementById('progressFill');
+      const exportSection = document.getElementById('exportSection');
+      const searchSection = document.getElementById('searchSection');
 
-          const js = JSON.parse(j)
-          renderTable(js)
-        }
-        reader.readAsArrayBuffer(file)
+      filesList.innerHTML = '';
+      processedFiles.clear();
+      allResults = [];
+
+      progressBar.style.display = 'block';
+      exportSection.style.display = 'none';
+      searchSection.classList.remove('visible');
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const progress = ((i + 1) / files.length) * 100;
+        progressFill.style.width = progress + '%';
+
+        await processFile(file);
+      }
+
+      progressBar.style.display = 'none';
+      if (allResults.length > 0) {
+        exportSection.style.display = 'block';
+        searchSection.classList.add('visible');
+        updateSearchResults();
       }
     }
 
+    function processFile(file) {
+      return new Promise((resolve) => {
+        const fileCard = createFileCard(file.name);
+        document.getElementById('filesList').appendChild(fileCard);
+
+        updateFileStatus(file.name, 'processing', 'Processing...');
+
+        const reader = new FileReader();
+        reader.onload = function () {
+          try {
+            const arrayBuffer = this.result;
+            const array = new Uint8Array(arrayBuffer);
+            const jsonResult = process(array);
+
+            if (!jsonResult) {
+              updateFileStatus(file.name, 'error', 'Failed to process');
+              resolve();
+              return;
+            }
+
+            const parsedData = JSON.parse(jsonResult);
+            processedFiles.set(file.name, parsedData);
+            allResults.push({
+              filename: file.name,
+              data: parsedData
+            });
+
+            updateFileStatus(file.name, 'success', 'Processed successfully');
+            enableFileActions(file.name);
+
+          } catch (error) {
+            console.error('Error processing file:', error);
+            updateFileStatus(file.name, 'error', 'Processing failed');
+          }
+          resolve();
+        };
+
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function createFileCard(filename) {
+      const card = document.createElement('div');
+      card.className = 'file-card';
+      const safeId = filename.replace(/[^a-zA-Z0-9]/g, '_');
+      card.id = `card-${safeId}`;
+      card.setAttribute('data-filename', filename.toLowerCase());
+
+      card.innerHTML = `
+        <div class="file-info">
+          <div class="file-name">${filename}</div>
+          <div class="status processing" id="status-${safeId}">Processing...</div>
+        </div>
+        <div class="file-actions">
+          <button class="action-btn" id="view-${safeId}" onclick="viewJSON('${filename}')" disabled>
+            📝 View JSON
+          </button>
+          <button class="action-btn" id="download-${safeId}" onclick="downloadJSON('${filename}')" disabled>
+            💾 Download JSON
+          </button>
+        </div>
+      `;
+
+      return card;
+    }
+
+    function updateFileStatus(filename, type, message) {
+      const safeId = filename.replace(/[^a-zA-Z0-9]/g, '_');
+      const statusEl = document.getElementById(`status-${safeId}`);
+      if (statusEl) {
+        statusEl.className = `status ${type}`;
+        statusEl.textContent = message;
+      }
+    }
+
+    function enableFileActions(filename) {
+      const safeId = filename.replace(/[^a-zA-Z0-9]/g, '_');
+      document.getElementById(`view-${safeId}`).disabled = false;
+      document.getElementById(`download-${safeId}`).disabled = false;
+    }
+
+    function filterFiles() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const fileCards = document.querySelectorAll('.file-card');
+      let visibleCount = 0;
+
+      fileCards.forEach(card => {
+        const filename = card.getAttribute('data-filename');
+        if (filename.includes(searchTerm)) {
+          card.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+
+      updateSearchResults();
+    }
+
+    function updateSearchResults() {
+      const searchTerm = document.getElementById('searchInput').value;
+      const fileCards = document.querySelectorAll('.file-card');
+      const visibleCards = document.querySelectorAll('.file-card:not(.hidden)');
+      const searchResults = document.getElementById('searchResults');
+
+      if (searchTerm.trim() === '') {
+        searchResults.textContent = `Showing all ${fileCards.length} files`;
+      } else {
+        searchResults.textContent = `Found ${visibleCards.length} of ${fileCards.length} files matching "${searchTerm}"`;
+      }
+    }
+
+    function viewJSON(filename) {
+      const data = processedFiles.get(filename);
+      if (!data) return;
+
+      document.getElementById('modalTitle').textContent = `JSON Data - ${filename}`;
+      document.getElementById('jsonViewer').textContent = JSON.stringify(data, null, 2);
+      document.getElementById('jsonModal').style.display = 'block';
+    }
+
+    function downloadJSON(filename) {
+      const data = processedFiles.get(filename);
+      if (!data) return;
+
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      // Keep the original filename but change extension to .json
+      const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+      a.download = nameWithoutExt + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function closeModal() {
+      document.getElementById('jsonModal').style.display = 'none';
+    }
+
+    function exportAsJSON() {
+      if (allResults.length === 0) return;
+
+      const exportData = {};
+      allResults.forEach(result => {
+        exportData[result.filename] = result.data;
+      });
+
+      const jsonString = JSON.stringify(exportData, null, 2);
+      downloadFile(jsonString, 'exif_data.json', 'application/json');
+    }
+
+    async function exportAsZip() {
+      if (allResults.length === 0) return;
+
+      const zip = new JSZip();
+
+      allResults.forEach(result => {
+        const jsonString = JSON.stringify(result.data, null, 2);
+        // Preserve the original extension in the JSON filename to avoid conflicts
+        // photo.cr2 -> photo.cr2.json, photo.nef -> photo.nef.json
+        const filename = result.filename + '.json';
+        zip.file(filename, jsonString);
+      });
+
+      try {
+        const content = await zip.generateAsync({type: 'blob'});
+        downloadFile(content, 'exif_data.zip', 'application/zip');
+      } catch (error) {
+        console.error('Error creating ZIP file:', error);
+        alert('Error creating ZIP file');
+      }
+    }
+
+    function downloadFile(content, filename, mimeType) {
+      const blob = new Blob([content], {type: mimeType});
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function (event) {
+      const modal = document.getElementById('jsonModal');
+      if (event.target === modal) {
+        closeModal();
+      }
+    }
   </script>
 </body>
 
