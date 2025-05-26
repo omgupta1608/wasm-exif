@@ -1,18 +1,18 @@
-# 📸 RAW Image EXIF Viewer (WebAssembly + Go)
+# RAW Image EXIF Viewer (WebAssembly + Go)
 
 This is a privacy-focused web application that allows users to select a RAW image from their local file system and view its **EXIF metadata** directly in the browser. It uses **Go + WebAssembly (WASM)** to parse the image, with all processing happening locally — **no data is uploaded** anywhere.
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
-- 🖼️ **Select RAW images** directly from your device
-- 🔐 **Privacy-first**: All image processing happens **completely offline** in your browser
-- ⚡ Powered by **Go + WebAssembly**
+- **Select RAW images** directly from your device
+- **Privacy-first**: All image processing happens **completely offline** in your browser
+- Powered by **Go + WebAssembly**
 
 ---
 
-## 🗂️ Supported RAW Formats
+## Supported RAW Formats
 
 Currently, the following RAW file formats are supported:
 
@@ -25,9 +25,9 @@ Currently, the following RAW file formats are supported:
 
 ---
 
-## ⚙️ How It Works (Technical Overview)
+## How It Works (Technical Overview)
 
-### 🧩 WebAssembly + Go
+### WebAssembly + Go
 
 - The core EXIF decoding logic is written in **Go**, using [`goexif`](https://github.com/rwcarlsen/goexif) to parse EXIF metadata.
 - The Go code is compiled to **WebAssembly** (`main.wasm`) using:
@@ -35,7 +35,7 @@ Currently, the following RAW file formats are supported:
   GOOS=js GOARCH=wasm go build -o main.wasm main.go
   ```
 
-### 🧠 JS ↔ Go Interop
+### JS ↔ Go Interop
 
 - In the browser, `wasm_exec.js` (provided by Go) bridges JavaScript and WebAssembly.
 - A `process(arrayBuffer)` function is exposed to JS via `js.FuncOf()` in Go.
@@ -44,7 +44,7 @@ Currently, the following RAW file formats are supported:
   js.CopyBytesToGo(imgBytes, p[0])
   ```
 
-### 🧵 Data Flow
+### Data Flow
 
 1. User selects a file → JS reads it as `ArrayBuffer`
 2. JS passes the bytes to WASM-Go via `process()`
